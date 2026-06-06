@@ -14,10 +14,12 @@ function addHabit() {
   let habit = {
     name: habitName,
     streak: 0,
-    lastCompleted: null
+    lastCompleted: null,
+    completedDates: []
   };
 
   habits.push(habit);
+
   input.value = "";
 
   saveHabits();
@@ -33,7 +35,8 @@ function displayHabits() {
     let li = document.createElement("li");
 
     li.innerHTML = `
-      ${habit.name} 🔥 Streak: ${habit.streak}
+      <strong>${habit.name}</strong>
+      🔥 Streak: ${habit.streak}
       <button onclick="completeHabit(${index})">Complete</button>
       <button onclick="deleteHabit(${index})">Delete</button>
     `;
@@ -44,73 +47,97 @@ function displayHabits() {
 
 function completeHabit(index) {
   let habit = habits[index];
+
   let today = new Date().toDateString();
+  let todayISO = new Date().toISOString().split("T")[0];
 
-  if (habit.lastCompleted === today) return;
+  if (habit.lastCompleted === today) {
+    alert("Already completed today!");
+    return;
+  }
 
-  let yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (habit.lastCompleted === yesterday.toDateString()) {
-    habit.streak++;
-  } else {
+  if (!habit.lastCompleted) {
     habit.streak = 1;
+  } else {
+    let lastDate = new Date(habit.lastCompleted);
+
+    let yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (lastDate.toDateString() === yesterday.toDateString()) {
+      habit.streak++;
+    } else {
+      habit.streak = 1;
+    }
   }
 
   habit.lastCompleted = today;
 
-  saveHabits();
-  displayHabits();
-  loadCalendar(); // 🔥 update calendar
-}
+  if (!habit.completedDates) {
+    habit.completedDates = [];
+  }
 
-function deleteHabit(index) {
-  habits.splice(index, 1);
+  habit.completedDates.push(todayISO);
+
   saveHabits();
   displayHabits();
   loadCalendar();
 }
 
-// Reminder
+function deleteHabit(index) {
+  habits.splice(index, 1);
+
+  saveHabits();
+  displayHabits();
+  loadCalendar();
+}
+
 function toggleReminder() {
   reminderOn = !reminderOn;
+
   localStorage.setItem("reminder", JSON.stringify(reminderOn));
+
   alert(reminderOn ? "Reminder ON 🔔" : "Reminder OFF ❌");
 }
 
 setInterval(() => {
   let now = new Date();
 
-  if (reminderOn && now.getHours() === 20 && now.getMinutes() === 0) {
+  if (
+    reminderOn &&
+    now.getHours() === 20 &&
+    now.getMinutes() === 0
+  ) {
     alert("Complete your habits! 🔥");
   }
 }, 60000);
 
-// 🔥 Calendar function
 function loadCalendar() {
   let calendarEl = document.getElementById("calendar");
-  calendarEl.innerHTML = ""; // clear old calendar
+
+  calendarEl.innerHTML = "";
 
   let events = [];
 
   habits.forEach(habit => {
-    if (habit.lastCompleted) {
-      events.push({
-        title: habit.name,
-        date: new Date(habit.lastCompleted).toISOString().split('T')[0]
+    if (habit.completedDates) {
+      habit.completedDates.forEach(date => {
+        events.push({
+          title: habit.name,
+          date: date
+        });
       });
     }
   });
 
   let calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
+    initialView: "dayGridMonth",
     events: events
   });
 
   calendar.render();
 }
 
-// Load on start
 window.onload = function () {
   displayHabits();
   loadCalendar();
